@@ -1,5 +1,6 @@
 # Task 1
-Plotting can be a bit of a bottomless well, but I found KDE plots of comparing patients with disease to the control useful.
+This task seems a bit like a bottomless well, where you can keep making improvements, so I stopped at the basic functionality.
+There's a lot of initial plots and analysis that could be done, but I found KDE plots of comparing patients with disease to the control useful.
 As far as I understand, the Filtered entries could both indicate low intensities, but also high uncertainty or similar.
 I think transformers should be good as a classifier since they support masked features, but I opted for a simple random forest model, as it allows for direct estimation of feature importance.
 Here the Filtered entries was just replaced with a small value, since the random forest architecture should be robust under this assumption (or atleast more robust than non-tree methods).
