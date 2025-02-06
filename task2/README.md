@@ -1,4 +1,15 @@
-# Prompt
+# Task 2
+I setup a deepseek agent to try to automate this, as my domain expertise lies elsewhere.
+There is some chain of thought to prevent halucination in the model, but many improvements could be made.
+For example, the model only generates a single response, but could also be designed to generate multiple and select with majority voting.
+Similarly there's not additional self-consistency or fact checking.
+
+Another caveat is that the model is likely not trained on articles behind paywalls.
+
+The model takes an initial prompt as input, followed by internal reasoning and the final model output.
+These are listed below.
+
+## Prompt
 You are a highly knowledgeable biomedical research assistant with expertise in molecular biology, bioinformatics, and pharmacology. You have performed a spatial proteomics experiment to study a skin disease. For several patients, you could compare immune cells from healthy regions to immune cells in areas affected by the disease. You have now found several proteins to be regulated:
 
 The upregulated proteins are: STAT1, RNF213, TAP2, LRRC59, WARS1, MNDA, LYZ, QKI, GBP1, MPO, S100A9, GCA.
@@ -16,7 +27,10 @@ DOIs in the reference, as well as the main findings.
 
 Note: Clearly state any assumptions and include uncertainty where necessary. Format your response in a clear, structured manner with headings for each section.
 
-You can assume that the provided protein lists are accurate and have been obtained from rigorous experimental methods. Your suggestions should aim to integrate the latest research and clinical insights in the field.<|Assistant|><think>
+You can assume that the provided protein lists are accurate and have been obtained from rigorous experimental methods. Your suggestions should aim to integrate the latest research and clinical insights in the field.
+
+### 0. Reasoning
+
 Alright, so I've got this query from a user who's done a spatial proteomics experiment on a skin disease. They've identified upregulated and downregulated proteins. I need to figure out the biological implications, associated diseases, treatment strategies, and back this up with references. Let's break this down.
 
 First, the upregulated proteins: STAT1, RNF213, TAP2, LRRC59, WARS1, MNDA, LYZ, QKI, GBP1, MPO, S100A9, GCA. I remember STAT1 is involved in inflammation and immune response. RNF213 is part of the Nrf2 pathway, which is important for antioxidant responses. TAP2 is a protease that's involved in antigen processing. LRRC59 is a transcription factor linked to fibrosis and inflammation. WARS1 is also involved in fibrosis. MNDA and LYZ might be involved in immune regulation or neuroprotection. QKI is a cytokine, so that's definitely involved in immune response. GBP1 is another fibrosis protein. MPO is an oxidase, so that ties into oxidative stress. S100A9 is a lectin-like protein, maybe involved in immune or inflammatory cells. GCA could be a growth factor receptor.
@@ -32,7 +46,8 @@ Treatment strategies: For chronic inflammation, NSAIDs like ibuprofen could help
 References: I'll need to find some key papers. For psoriasis, Kornienko et al. (2017) reviews the pathobiology. Gao et al. (2019) discuss TAP2 in psoriasis. For fibrosis, Kiyonaga et al. (2018) review the Nrf2 pathway. Joo et al. (2017) talk about TAP2 inhibitors. For treatment, Kornienko (2019) reviews therapies. Yildirim et al. (2019) discuss Nrf2 targets. Lastly, a review by Bhardwaj et al. (2018) on fibrosis treatments.
 
 Conclusion: The upregulated proteins suggest chronic inflammation and fibrosis, pointing to conditions like psoriasis. Downregulated proteins support this. Treatments would target these pathways with NSAIDs, STAT1 inhibitors, TAP2 inhibitors, and fibrosis inhibitors. The evidence from the references supports this.
-</think>
+
+---
 
 ### 1. Biological Implications
 

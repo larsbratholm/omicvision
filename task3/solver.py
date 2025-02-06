@@ -179,7 +179,7 @@ def solve(
     print("Optimal objective value:", result)
     print(
         "Optimal doses:",
-        np.asarray(doses.value, dtype=float if allow_partial_doses else int),
+        np.asarray(doses.value, dtype=float),
     )
 
 

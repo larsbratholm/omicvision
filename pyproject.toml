@@ -49,5 +49,5 @@ strict = true
 implicit_reexport = true
 
 [[tool.mypy.overrides]]
-module = ["transformers"]
+module = ["transformers", "seaborn", "sklearn.ensemble", "sklearn.model_selection"]
 ignore_missing_imports = true

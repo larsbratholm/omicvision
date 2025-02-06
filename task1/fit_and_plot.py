@@ -2,12 +2,18 @@
 Create plots and determine relevant biomarkers.
 """
 
-import pandas as pd
-import numpy as np
-from pydantic import BaseModel
 import argparse
-import seaborn as sns
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from pydantic import BaseModel
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV, KFold
+
+sns.set_style("whitegrid", {"grid.color": ".92", "axes.edgecolor": "0.92"})
+
 
 class Arguments(BaseModel):
     """
@@ -48,79 +54,112 @@ def parse_args() -> Arguments:
 
     return Arguments(**vars(args))
 
+
 def parse_data(dataset_filename: str, metadata_filename: str) -> pd.DataFrame:
     """
-    """
+    Parse the datasets into a single DataFrame.
 
+    Args:
+        dataset_filename: the location of the xlsx file containing the dataset
+        metadata_filename: the location of the xlsx file containing the metadata
+
+    Returns:
+        Parsed DataFrame
+    """
     metadata = pd.read_excel(metadata_filename)
     # Create male column
     metadata["male"] = np.where(metadata["gender"] == "m", 1, 0)
     # Rename age column
     metadata = metadata.rename(columns={"age at CSF collection": "age"})
     # Create label column
-    metadata["label"] = np.where(metadata["primary biochemical AD classification"] == "biochemical AD", 1, 0)
+    metadata["label"] = np.where(
+        metadata["primary biochemical AD classification"] == "biochemical AD", 1, 0
+    )
 
     dataset = pd.read_excel(dataset_filename, skiprows=1)
     # Rename genes column
     dataset = dataset.rename(columns={"Unnamed: 1": "Protein accessions"})
 
     # Remove the [n] prefixes.
-    dataset.columns = dataset.columns.str.replace(r'^\[\d+\] ', '', regex=True)
+    dataset.columns = dataset.columns.str.replace(r"^\[\d+\] ", "", regex=True)
 
     # Melt dataset to align Gene names with corresponding sample values
-    dataset_melted = dataset.melt(id_vars=['Protein accessions'], var_name='sample name', value_name='value')
+    dataset_melted = dataset.melt(
+        id_vars=["Protein accessions"], var_name="sample name", value_name="value"
+    )
     # Merge with metadata
-    merged_df = pd.merge(metadata, dataset_melted, on='sample name', how='left')
+    merged_df = pd.merge(metadata, dataset_melted, on="sample name", how="left")
     # Pivot the melted df back to get a column for each Gene name, with values from corresponding sample columns
-    df = merged_df.pivot_table(index=["sample name", "male", "age", "label"], columns='Protein accessions', values='value', aggfunc='first')
+    df = merged_df.pivot_table(
+        index=["sample name", "male", "age", "label"],
+        columns="Protein accessions",
+        values="value",
+        aggfunc="first",
+    )
 
     # Reset index to get original columns back
     df.reset_index(inplace=True)
 
-    # Replace Filtered with small values
-    df = df.replace("Filtered", 1)
-
-    sns.boxplot(data=df, x="label", y="A0A024QZX5;A0A087X1N8;P35237")
-    plt.show()
-
-
     return df
 
-def plot_corr():
-    # Healthy vs diseased?
-    df = df.replace("Filtered", np.nan)
-    proteins = df.columns.tolist()[4:]
 
-    corr = df[proteins[:10]].corr()
-    sns.heatmap(corr, annot=True, cmap="coolwarm")
-    plt.title('Correlation Matrix of Protein Intensities')
-    plt.show()
+def make_kde_plots(data: pd.DataFrame, subset: list[str]) -> None:
+    """
+    Make KDE plots comparing healthy and diseased states for each entry.
 
-def plot_kde():
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    key = "A0A024QZX5;A0A087X1N8;P35237"
-    x = np.log(df[key].to_numpy())
+    Args:
+        data: the dataset
+        subset: the feature subset to plot
+    """
+    # Set Filtered to some small value
+    df = data.replace("Filtered", 1)
+    for key in subset:
+        short_name = key.split(";")[0]
+        # log transform
+        x = np.log(df[key].to_numpy())
+        y = df["label"].to_numpy()
+        sns.kdeplot(x[(y == 0)], label="Healthy")
+        sns.kdeplot(x[(y == 1)], label="Diseased")
+        plt.title(f"Density Plot of {short_name} Intensities by Disease Status")
+        plt.xlabel("Log-intensity")
+        plt.xlim(left=max(4, x.min()))
+        plt.legend()
+        plt.savefig(f"{short_name}.png", dpi=600, bbox_inches="tight")
+        plt.clf()
+
+
+def get_feature_importance(data: pd.DataFrame) -> list[str]:
+    """
+    Train a random forrest model to gain insight into feature importance.
+
+    Args:
+        data: the dataset
+
+    Returns:
+        The 10 most important features based on the feature importance analysis.
+    """
+    df = data.replace("Filtered", 1)
+    features = df.columns.tolist()[4:] + ["age", "male"]
+    X = df[features].to_numpy()
+    # log transform
+    X[:, :-1] = np.log(X[:, :-1])
     y = df["label"].to_numpy()
-    mask = x > 0
-    sns.kdeplot(x[(y==0)], label="Healthy")
-    sns.kdeplot(x[(y==1)], label="Diseased")
-    plt.title(f'Density Plot of {key} Intensities by Disease Status')
-    plt.xlim(left=max(2, x.min()))
-    plt.legend()
-    plt.show()
+    # Do light cross-validation
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    model = RandomForestClassifier(
+        max_features=None, bootstrap=True, criterion="entropy"
+    )
+    param_grid = {"n_estimators": [100, 300, 1000]}
+    grid = GridSearchCV(model, param_grid, cv=cv, verbose=1, refit=True)
+    grid.fit(X, y)
+    print("Best parameters:", grid.best_params_)
+    print("Best score:", grid.best_score_)
 
-def get_feature_importance():
-    from sklearn.ensemble import RandomForestClassifier
-
-    # Train a Random Forest model
-    rf_model = RandomForestClassifier()
-    rf_model.fit(X_train, y_train)
-    
     # Get feature importances
-    feature_importances = rf_model.feature_importances_
+    feature_importances = grid.best_estimator_.feature_importances_
+    idx = np.argsort(feature_importances)[::-1]
 
-
+    return [features[i] for i in idx[:10]]
 
 
 def main(args: Arguments) -> None:
@@ -130,7 +169,10 @@ def main(args: Arguments) -> None:
     Args:
         args: the command-line arguments
     """
-    parse_data(dataset_filename=args.dataset, metadata_filename=args.metadata)
+    df = parse_data(dataset_filename=args.dataset, metadata_filename=args.metadata)
+    subset = get_feature_importance(data=df)
+    make_kde_plots(data=df, subset=subset)
+
 
 if __name__ == "__main__":
     arguments = parse_args()
